@@ -1,14 +1,15 @@
 import telebot
 import os
+import requests
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-from openai import OpenAI
 
 TOKEN = os.getenv("TOKEN")
+TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
 
 bot = telebot.TeleBot(TOKEN)
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# -------- START (AVEC MENU DIRECT) --------
+
+# -------- START --------
 @bot.message_handler(commands=['start'])
 def start(message):
 
@@ -31,72 +32,64 @@ def start(message):
 # -------- HELP --------
 @bot.message_handler(commands=['help'])
 def help_command(message):
-    bot.reply_to(message, """
-📌 Commandes:
-/start - afficher le menu
-/help - aide
-""")
+    bot.reply_to(message, "/start - afficher le menu")
 
 
-# -------- ACTION DES BOUTONS --------
+# -------- ACTION BOUTONS --------
 @bot.callback_query_handler(func=lambda call: True)
 def callback(call):
 
     if call.data == "info":
-        bot.send_message(call.message.chat.id,
-                         "🤖 Je suis un bot amélioré 🚀")
+        bot.send_message(call.message.chat.id, "🤖 Je suis un bot IA gratuit !")
 
     elif call.data == "hello":
-        bot.send_message(call.message.chat.id,
-                         "Salut 😄")
+        bot.send_message(call.message.chat.id, "Salut 😄")
 
     elif call.data == "contact":
-        bot.send_message(call.message.chat.id,
-                         "📞 Contact : @ton_username")
+        bot.send_message(call.message.chat.id, "📞 Contact : @ton_username")
 
     elif call.data == "settings":
-        bot.send_message(call.message.chat.id,
-                         "⚙️ Paramètres bientôt disponibles...")
+        bot.send_message(call.message.chat.id, "⚙️ Paramètres bientôt disponibles...")
 
-# -------- CHAT IA --------
+
+# -------- IA GRATUITE TOGETHER --------
 @bot.message_handler(func=lambda message: True)
 def chat_ai(message):
 
     try:
         bot.send_chat_action(message.chat.id, "typing")
 
-        response = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[
+        url = "https://api.together.xyz/v1/chat/completions"
+
+        headers = {
+            "Authorization": f"Bearer {TOGETHER_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        data = {
+            "model": "mistralai/Mistral-7B-Instruct-v0.2",
+            "messages": [
                 {"role": "user", "content": message.text}
             ]
-        )
+        }
 
-        reply = response.choices[0].message.content
+        response = requests.post(url, headers=headers, json=data)
+
+        result = response.json()
+        print(result)
+
+        if "choices" not in result:
+            bot.reply_to(message, "⚠️ IA indisponible")
+            return
+
+        reply = result["choices"][0]["message"]["content"]
 
         bot.reply_to(message, reply)
 
     except Exception as e:
-        print("ERREUR OPENAI:", e)
-        bot.reply_to(message, "⚠️ Erreur IA")
-@bot.message_handler(func=lambda message: True)
-def chat_ai(message):
+        print("ERREUR:", e)
+        bot.reply_to(message, "⚠️ Erreur IA gratuite")
 
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[
-                {"role": "system", "content": "Tu es un assistant Telegram amical."},
-                {"role": "user", "content": message.text}
-            ]
-        )
 
-        reply = response.choices[0].message.content
-
-        bot.reply_to(message, reply)
-
-    except Exception as e:
-        print(e)
-        bot.reply_to(message, "⚠️ Erreur IA.")
 print("Bot is running...")
 bot.infinity_polling(skip_pending=True)
