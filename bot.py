@@ -1,5 +1,6 @@
 import telebot
 import os
+import time
 import google.generativeai as genai
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -16,12 +17,16 @@ if not GEMINI_KEY:
 
 genai.configure(api_key=GEMINI_KEY)
 
-# ✅ MODELE CORRECT (IMPORTANT)
-print("MODELE UTILISÉ =", "gemini-2.0-flash")
+# ✅ MODELE GEMINI STABLE (FREE)
+MODEL_NAME = "gemini-2.0-flash"
+print("MODELE UTILISÉ =", MODEL_NAME)
 
-model = genai.GenerativeModel("gemini-2.0-flash")
+model = genai.GenerativeModel(MODEL_NAME)
 
 bot = telebot.TeleBot(TOKEN)
+
+# Anti-spam IA (évite erreur 429)
+last_request = {}
 
 # ---------------- START ----------------
 
@@ -71,17 +76,34 @@ def callback(call):
 @bot.message_handler(func=lambda message: True)
 def chat_ai(message):
 
+    # ❌ ignore les commandes
+    if message.text.startswith("/"):
+        return
+
+    user_id = message.from_user.id
+    now = time.time()
+
+    # ✅ anti spam (1 requête / 5 sec)
+    if user_id in last_request and now - last_request[user_id] < 5:
+        bot.reply_to(message, "⏳ Attends quelques secondes...")
+        return
+
+    last_request[user_id] = now
+
     try:
         bot.send_chat_action(message.chat.id, "typing")
 
         response = model.generate_content(message.text)
 
-        bot.reply_to(message, response.text)
+        if response.text:
+            bot.reply_to(message, response.text)
+        else:
+            bot.reply_to(message, "⚠️ Réponse vide.")
 
     except Exception as e:
         print("===== ERREUR GEMINI =====")
         print(e)
-        bot.reply_to(message, f"⚠️ Erreur IA:\n{e}")
+        bot.reply_to(message, "⚠️ IA temporairement indisponible.")
 
 # ---------------- RUN ----------------
 
