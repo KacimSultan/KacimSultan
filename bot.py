@@ -17,6 +17,8 @@ if not GEMINI_KEY:
 genai.configure(api_key=GEMINI_KEY)
 
 # ✅ MODELE CORRECT (IMPORTANT)
+print("MODELE UTILISÉ =", "gemini-2.0-flash")
+
 model = genai.GenerativeModel("gemini-2.0-flash")
 
 bot = telebot.TeleBot(TOKEN)
