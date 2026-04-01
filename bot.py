@@ -3,23 +3,25 @@ import os
 import google.generativeai as genai
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# =============================
-# CONFIG
-# =============================
+# ---------------- CONFIG ----------------
 
 TOKEN = os.getenv("TOKEN")
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
-print("GEMINI KEY =", GEMINI_KEY)
+if not TOKEN:
+    raise Exception("TOKEN Telegram manquant")
+
+if not GEMINI_KEY:
+    raise Exception("GEMINI_API_KEY manquante")
+
+genai.configure(api_key=GEMINI_KEY)
+
+# ✅ MODELE CORRECT (IMPORTANT)
+model = genai.GenerativeModel("gemini-2.0-flash")
 
 bot = telebot.TeleBot(TOKEN)
 
-genai.configure(api_key=GEMINI_KEY)
-model = genai.GenerativeModel("gemini-1.0-pro")
-
-# =============================
-# START COMMAND
-# =============================
+# ---------------- START ----------------
 
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -35,27 +37,23 @@ def start(message):
 
     bot.send_message(
         message.chat.id,
-        "👋 Bienvenue ! Je suis ton bot IA gratuit.\nÉcris-moi un message 🤖",
+        "👋 Bienvenue ! Choisis une option :",
         reply_markup=markup
     )
 
-# =============================
-# HELP
-# =============================
+# ---------------- HELP ----------------
 
 @bot.message_handler(commands=['help'])
 def help_command(message):
-    bot.reply_to(message, "Envoie simplement un message pour parler avec l'IA.")
+    bot.reply_to(message, "/start - afficher le menu")
 
-# =============================
-# BUTTON ACTIONS
-# =============================
+# ---------------- BOUTONS ----------------
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback(call):
 
     if call.data == "info":
-        bot.send_message(call.message.chat.id, "🤖 Bot IA gratuit avec Gemini.")
+        bot.send_message(call.message.chat.id, "🤖 Je suis un bot IA gratuit !")
 
     elif call.data == "hello":
         bot.send_message(call.message.chat.id, "Salut 😄")
@@ -64,11 +62,9 @@ def callback(call):
         bot.send_message(call.message.chat.id, "📞 Contact : @ton_username")
 
     elif call.data == "settings":
-        bot.send_message(call.message.chat.id, "⚙️ Paramètres bientôt disponibles.")
+        bot.send_message(call.message.chat.id, "⚙️ Paramètres bientôt disponibles...")
 
-# =============================
-# GEMINI AI CHAT
-# =============================
+# ---------------- IA GEMINI ----------------
 
 @bot.message_handler(func=lambda message: True)
 def chat_ai(message):
@@ -85,9 +81,7 @@ def chat_ai(message):
         print(e)
         bot.reply_to(message, f"⚠️ Erreur IA:\n{e}")
 
-# =============================
-# RUN BOT
-# =============================
+# ---------------- RUN ----------------
 
 print("Bot is running...")
 bot.infinity_polling(skip_pending=True)
